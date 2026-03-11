@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salesforce Admin 180問 完全攻略</title>
+    <title>Salesforce 認定 Platform アドミニストレーター完全攻略</title>
     <style>
-        :root { --sf-blue: #0176d3; --bg-gray: #f3f3f3; --correct-bg: #e6ffed; --wrong-bg: #ffeef0; }
+        :root { --sf-blue: #0176d3; --bg-gray: #f3f3f3; --correct-bg: #e6ffed; --wrong-bg: #ffeef0; --wrong-red: #d32f2f; --correct-green: #2e7d32; }
         body { font-family: sans-serif; background: var(--bg-gray); margin: 0; padding-top: 140px; }
         header { position: fixed; top: 0; width: 100%; background: white; border-bottom: 1px solid #ddd; padding: 15px 0; z-index: 1000; }
         .header-inner { max-width: 900px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; }
@@ -19,59 +19,102 @@
         .options li { padding: 12px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa; }
         .check-area { display: flex; gap: 10px; margin: 20px 0; }
         .check-btn { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer; font-weight: bold; }
-        .check-btn.active-correct { background: #2e7d32; color: white; }
-        .check-btn.active-wrong { background: #d32f2f; color: white; }
+        .check-btn.active-correct { background: var(--correct-green); color: white; }
+        .check-btn.active-wrong { background: var(--wrong-red); color: white; }
         details { border-top: 2px solid #eee; padding-top: 15px; }
         summary { cursor: pointer; color: var(--sf-blue); font-weight: bold; }
         .ans-content { margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 6px; }
         .expl-item { margin-bottom: 15px; padding: 10px; border-radius: 4px; border-left: 4px solid #ddd; }
-        .is-correct { background: var(--correct-bg); border-left-color: #2e7d32; }
-        .btn-main { background: var(--sf-blue); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .is-correct { background: var(--correct-bg); border-left-color: var(--correct-green); }
+        .btn-outline { background: white; color: var(--sf-blue); border: 1px solid var(--sf-blue); padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-outline.active { background: var(--sf-blue); color: white; }
+        .btn-wrong-outline { background: white; color: var(--wrong-red); border: 1px solid var(--wrong-red); padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-wrong-outline.active { background: var(--wrong-red); color: white; }
+        .btn-success { background: var(--correct-green); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        #back-to-top { position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; background: var(--sf-blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 1000; opacity: 0; transition: 0.3s; pointer-events: none; border: none; font-size: 20px; }
+        #back-to-top.visible { opacity: 1; pointer-events: auto; }
     </style>
 </head>
 <body>
 <header>
     <div class="header-inner">
-        <div><strong>SF Admin 180問</strong><br><small><span id="done-cnt">0</span>/180 習得</small></div>
+        <div><strong>Salesforce認定アドミン試験対策</strong><br><small><span id="done-cnt">0</span>/180 習得</small></div>
         <div class="progress-bar"><div id="progress-inner"></div></div>
-        <button class="btn-main" onclick="shuffleAndRender()">シャッフル</button>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-outline" id="filter-all-btn" onclick="setFilter('all')">すべて</button>
+            <button class="btn-wrong-outline" id="filter-wrong-btn" onclick="setFilter('wrong')">要復習のみ</button>
+            <button class="btn-success" onclick="shuffleAndRender()">シャッフル</button>
+        </div>
     </div>
 </header>
 <div class="container" id="quiz-list">読み込み中...</div>
 
+<button id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</button>
+
 <script>
     let allQuestions = [];
     let progress = JSON.parse(localStorage.getItem('sf_admin_180_v2')) || {};
+    let currentFilter = 'all';
 
-    // 外部JSONファイルを読み込む
     fetch('questions.json')
         .then(response => response.json())
         .then(data => {
             allQuestions = data;
-            updateUI();
+            updateHeader();
+            render();
         })
         .catch(err => {
             document.getElementById('quiz-list').innerHTML = "エラー: questions.jsonが見つかりません。";
         });
 
-    function saveProgress(id, type) {
+    function saveProgress(id, type, btnElement) {
         if (progress[id] === type) delete progress[id];
         else progress[id] = type;
         localStorage.setItem('sf_admin_180_v2', JSON.stringify(progress));
-        updateUI();
+
+        updateHeader();
+
+        const card = btnElement.closest('.card');
+        const correctBtn = card.querySelector('.check-btn:nth-child(1)');
+        const wrongBtn = card.querySelector('.check-btn:nth-child(2)');
+
+        correctBtn.classList.remove('active-correct');
+        wrongBtn.classList.remove('active-wrong');
+
+        if (progress[id] === 'correct') correctBtn.classList.add('active-correct');
+        if (progress[id] === 'wrong') wrongBtn.classList.add('active-wrong');
     }
 
-    function updateUI() {
-        const doneCount = Object.keys(progress).length;
+    function updateHeader() {
+        const doneCount = Object.values(progress).filter(v => v === 'correct').length;
         document.getElementById('done-cnt').innerText = doneCount;
         document.getElementById('progress-inner').style.width = (doneCount / 180 * 100) + '%';
-        render(allQuestions);
+
+        document.getElementById('filter-all-btn').classList.toggle('active', currentFilter === 'all');
+        document.getElementById('filter-wrong-btn').classList.toggle('active', currentFilter === 'wrong');
     }
 
-    function render(data) {
+    function setFilter(mode) {
+        currentFilter = mode;
+        updateHeader();
+        render();
+        window.scrollTo(0,0);
+    }
+
+    function render() {
         const list = document.getElementById('quiz-list');
         list.innerHTML = '';
-        data.forEach(item => {
+
+        let displayData = allQuestions;
+        if (currentFilter === 'wrong') {
+            displayData = allQuestions.filter(q => progress[q.id] === 'wrong');
+            if (displayData.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding: 50px; color: #666;">「要復習」にチェックされた問題はありません。</div>';
+                return;
+            }
+        }
+
+        displayData.forEach(item => {
             const status = progress[item.id];
             const card = document.createElement('div');
             card.className = 'card';
@@ -80,11 +123,11 @@
                 <div class="q-text">${item.q}</div>
                 <ul class="options">${item.opts.map((o,i)=>`<li>${i+1}. ${o}</li>`).join('')}</ul>
                 <div class="check-area">
-                    <button class="check-btn ${status==='correct'?'active-correct':''}" onclick="saveProgress(${item.id},'correct')">習得</button>
-                    <button class="check-btn ${status==='wrong'?'active-wrong':''}" onclick="saveProgress(${item.id},'wrong')">要復習</button>
+                    <button class="check-btn ${status==='correct'?'active-correct':''}" onclick="saveProgress(${item.id},'correct', this)">習得</button>
+                    <button class="check-btn ${status==='wrong'?'active-wrong':''}" onclick="saveProgress(${item.id},'wrong', this)">要復習</button>
                 </div>
                 <details><summary>正解と全解説を表示</summary><div class="ans-content">
-                    <b style="color:#2e7d32">正解：選択肢 ${item.ans}</b><br><br>
+                    <b style="color:var(--correct-green)">正解：選択肢 ${item.ans}</b><br><br>
                     ${item.expl.map((e,i)=>`<div class="expl-item ${e.t==='正解'?'is-correct':''}">
                         <b>選択肢${i+1} [${e.t}]</b><br>${e.d}</div>`).join('')}
                 </div></details>`;
@@ -94,9 +137,15 @@
 
     function shuffleAndRender() {
         allQuestions.sort(() => Math.random() - 0.5);
-        render(allQuestions);
+        render();
         window.scrollTo(0,0);
     }
+
+    window.addEventListener('scroll', () => {
+        const btn = document.getElementById('back-to-top');
+        if (window.scrollY > 300) btn.classList.add('visible');
+        else btn.classList.remove('visible');
+    });
 </script>
 </body>
 </html>
