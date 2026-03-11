@@ -31,6 +31,8 @@
         .btn-wrong-outline { background: white; color: var(--wrong-red); border: 1px solid var(--wrong-red); padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-wrong-outline.active { background: var(--wrong-red); color: white; }
         .btn-success { background: var(--correct-green); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-reset { background: white; color: #666; border: 1px solid #ccc; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-reset:hover { background: #f5f5f5; }
         #back-to-top { position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; background: var(--sf-blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 1000; opacity: 0; transition: 0.3s; pointer-events: none; border: none; font-size: 20px; }
         #back-to-top.visible { opacity: 1; pointer-events: auto; }
     </style>
@@ -38,12 +40,13 @@
 <body>
 <header>
     <div class="header-inner">
-        <div><strong>Salesforce認定アドミン試験対策</strong><br><small><span id="done-cnt">0</span>/180 習得</small></div>
+        <div><strong>SF Admin 180問</strong><br><small><span id="done-cnt">0</span>/180 習得</small></div>
         <div class="progress-bar"><div id="progress-inner"></div></div>
         <div style="display: flex; gap: 10px;">
             <button class="btn-outline" id="filter-all-btn" onclick="setFilter('all')">すべて</button>
             <button class="btn-wrong-outline" id="filter-wrong-btn" onclick="setFilter('wrong')">要復習のみ</button>
             <button class="btn-success" onclick="shuffleAndRender()">シャッフル</button>
+            <button class="btn-reset" onclick="resetProgress()">リセット</button>
         </div>
     </div>
 </header>
@@ -83,6 +86,17 @@
 
         if (progress[id] === 'correct') correctBtn.classList.add('active-correct');
         if (progress[id] === 'wrong') wrongBtn.classList.add('active-wrong');
+    }
+
+    function resetProgress() {
+        if (confirm('すべての学習進捗（習得・要復習）をリセットしますか？')) {
+            progress = {};
+            localStorage.removeItem('sf_admin_180_v2');
+            currentFilter = 'all';
+            updateHeader();
+            render();
+            window.scrollTo(0, 0);
+        }
     }
 
     function updateHeader() {
