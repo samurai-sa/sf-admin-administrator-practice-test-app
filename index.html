@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salesforce Admin 180問 完全攻略</title>
+    <style>
+        :root { --sf-blue: #0176d3; --bg-gray: #f3f3f3; --correct-bg: #e6ffed; --wrong-bg: #ffeef0; }
+        body { font-family: sans-serif; background: var(--bg-gray); margin: 0; padding-top: 140px; }
+        header { position: fixed; top: 0; width: 100%; background: white; border-bottom: 1px solid #ddd; padding: 15px 0; z-index: 1000; }
+        .header-inner { max-width: 900px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; }
+        .progress-bar { flex-grow: 1; margin: 0 20px; background: #e0e5ee; height: 12px; border-radius: 6px; overflow: hidden; }
+        #progress-inner { background: var(--sf-blue); height: 100%; width: 0%; transition: 0.4s; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .card { background: white; border-radius: 8px; padding: 25px; margin-bottom: 25px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-left: 5px solid var(--sf-blue); }
+        .q-num { color: var(--sf-blue); font-weight: bold; font-size: 14px; }
+        .q-text { font-size: 1.1rem; font-weight: bold; margin: 15px 0; line-height: 1.6; }
+        .options { list-style: none; padding: 0; }
+        .options li { padding: 12px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa; }
+        .check-area { display: flex; gap: 10px; margin: 20px 0; }
+        .check-btn { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer; font-weight: bold; }
+        .check-btn.active-correct { background: #2e7d32; color: white; }
+        .check-btn.active-wrong { background: #d32f2f; color: white; }
+        details { border-top: 2px solid #eee; padding-top: 15px; }
+        summary { cursor: pointer; color: var(--sf-blue); font-weight: bold; }
+        .ans-content { margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 6px; }
+        .expl-item { margin-bottom: 15px; padding: 10px; border-radius: 4px; border-left: 4px solid #ddd; }
+        .is-correct { background: var(--correct-bg); border-left-color: #2e7d32; }
+        .btn-main { background: var(--sf-blue); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+<header>
+    <div class="header-inner">
+        <div><strong>SF Admin 180問</strong><br><small><span id="done-cnt">0</span>/180 習得</small></div>
+        <div class="progress-bar"><div id="progress-inner"></div></div>
+        <button class="btn-main" onclick="shuffleAndRender()">シャッフル</button>
+    </div>
+</header>
+<div class="container" id="quiz-list">読み込み中...</div>
+
+<script>
+    let allQuestions = [];
+    let progress = JSON.parse(localStorage.getItem('sf_admin_180_v2')) || {};
+
+    // 外部JSONファイルを読み込む
+    fetch('questions.json')
+        .then(response => response.json())
+        .then(data => {
+            allQuestions = data;
+            updateUI();
+        })
+        .catch(err => {
+            document.getElementById('quiz-list').innerHTML = "エラー: questions.jsonが見つかりません。";
+        });
+
+    function saveProgress(id, type) {
+        if (progress[id] === type) delete progress[id];
+        else progress[id] = type;
+        localStorage.setItem('sf_admin_180_v2', JSON.stringify(progress));
+        updateUI();
+    }
+
+    function updateUI() {
+        const doneCount = Object.keys(progress).length;
+        document.getElementById('done-cnt').innerText = doneCount;
+        document.getElementById('progress-inner').style.width = (doneCount / 180 * 100) + '%';
+        render(allQuestions);
+    }
+
+    function render(data) {
+        const list = document.getElementById('quiz-list');
+        list.innerHTML = '';
+        data.forEach(item => {
+            const status = progress[item.id];
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="q-num">問題 ${item.id}</div>
+                <div class="q-text">${item.q}</div>
+                <ul class="options">${item.opts.map((o,i)=>`<li>${i+1}. ${o}</li>`).join('')}</ul>
+                <div class="check-area">
+                    <button class="check-btn ${status==='correct'?'active-correct':''}" onclick="saveProgress(${item.id},'correct')">習得</button>
+                    <button class="check-btn ${status==='wrong'?'active-wrong':''}" onclick="saveProgress(${item.id},'wrong')">要復習</button>
+                </div>
+                <details><summary>正解と全解説を表示</summary><div class="ans-content">
+                    <b style="color:#2e7d32">正解：選択肢 ${item.ans}</b><br><br>
+                    ${item.expl.map((e,i)=>`<div class="expl-item ${e.t==='正解'?'is-correct':''}">
+                        <b>選択肢${i+1} [${e.t}]</b><br>${e.d}</div>`).join('')}
+                </div></details>`;
+            list.appendChild(card);
+        });
+    }
+
+    function shuffleAndRender() {
+        allQuestions.sort(() => Math.random() - 0.5);
+        render(allQuestions);
+        window.scrollTo(0,0);
+    }
+</script>
+</body>
+</html>
