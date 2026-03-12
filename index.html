@@ -30,6 +30,8 @@
         .btn-outline.active { background: var(--sf-blue); color: white; }
         .btn-wrong-outline { background: white; color: var(--wrong-red); border: 1px solid var(--wrong-red); padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-wrong-outline.active { background: var(--wrong-red); color: white; }
+        .btn-unanswered-outline { background: white; color: #666; border: 1px solid #666; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-unanswered-outline.active { background: #666; color: white; }
         .btn-success { background: var(--correct-green); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-reset { background: white; color: #666; border: 1px solid #ccc; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-reset:hover { background: #f5f5f5; }
@@ -40,11 +42,15 @@
 <body>
 <header>
     <div class="header-inner">
-        <div><strong>SF Admin 180問</strong><br><small><span id="done-cnt">0</span>/180 習得</small></div>
+        <div style="min-width: 180px;"><strong>SF Admin 180問</strong><br>
+            <small>習得: <span id="done-cnt">0</span> / <span id="total-cnt">180</span></small> | 
+            <small>要復習: <span id="wrong-cnt">0</span></small>
+        </div>
         <div class="progress-bar"><div id="progress-inner"></div></div>
         <div style="display: flex; gap: 10px;">
             <button class="btn-outline" id="filter-all-btn" onclick="setFilter('all')">すべて</button>
-            <button class="btn-wrong-outline" id="filter-wrong-btn" onclick="setFilter('wrong')">要復習のみ</button>
+            <button class="btn-unanswered-outline" id="filter-unanswered-btn" onclick="setFilter('unanswered')">未回答</button>
+            <button class="btn-wrong-outline" id="filter-wrong-btn" onclick="setFilter('wrong')">要復習</button>
             <button class="btn-success" onclick="shuffleAndRender()">シャッフル</button>
             <button class="btn-reset" onclick="resetProgress()">リセット</button>
         </div>
@@ -100,11 +106,17 @@
     }
 
     function updateHeader() {
+        const totalCount = allQuestions.length || 180;
         const doneCount = Object.values(progress).filter(v => v === 'correct').length;
+        const wrongCount = Object.values(progress).filter(v => v === 'wrong').length;
+
+        document.getElementById('total-cnt').innerText = totalCount;
         document.getElementById('done-cnt').innerText = doneCount;
-        document.getElementById('progress-inner').style.width = (doneCount / 180 * 100) + '%';
+        document.getElementById('wrong-cnt').innerText = wrongCount;
+        document.getElementById('progress-inner').style.width = (doneCount / totalCount * 100) + '%';
 
         document.getElementById('filter-all-btn').classList.toggle('active', currentFilter === 'all');
+        document.getElementById('filter-unanswered-btn').classList.toggle('active', currentFilter === 'unanswered');
         document.getElementById('filter-wrong-btn').classList.toggle('active', currentFilter === 'wrong');
     }
 
@@ -124,6 +136,12 @@
             displayData = allQuestions.filter(q => progress[q.id] === 'wrong');
             if (displayData.length === 0) {
                 list.innerHTML = '<div style="text-align:center; padding: 50px; color: #666;">「要復習」にチェックされた問題はありません。</div>';
+                return;
+            }
+        } else if (currentFilter === 'unanswered') {
+            displayData = allQuestions.filter(q => !progress[q.id]);
+            if (displayData.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding: 50px; color: #666;">未回答の問題はありません。すべて回答済みです！</div>';
                 return;
             }
         }
